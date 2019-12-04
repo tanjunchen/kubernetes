@@ -69,6 +69,7 @@ The following is my rough survey calling a function in `gomega.*` form.
 
 Do you have similar ideas? Or what is your suggestion? How should we encapsulate it?
 my thought:
+
     ```
     // ExpectHaveKey succeeds if actual is a map with the passed in key.
     func ExpectHaveKey(actual interface{}, key interface{}) {
@@ -103,6 +104,4 @@ my thought:
 
 Maybe the above wrapper function can be replaced with a function that has been encapsulated, and there is still a lot of work to be done, after all, the [gomega](http://onsi.github.io/gomega/#benumericallycomparator-string-compareto-interface) and [ginkgo](http://onsi.github.io/ginkgo/#documenting-complex-its-by) test frameworks involve too many functions and parameters.
 
-If you have better ideas or opinions, please tell me, thank you!
-
-                            tanjunchen(githubId)
+If you have better ideas or opinions, please tell me, thank you! from tanjunchen(githubId).
