@@ -15,7 +15,8 @@ I found that some wrapper function in test/e2e/framework,such as:
     other functions
     ```
 Or we can continue to encapsulate some simple gomega.* in test/e2e/ folder. We can replace this code with framework.WrapperFunction(function, paramaters...) which is more readable and easy to be understood what the code does.
-The following is my rough survey calling a function in `gomega.*` form
+The following is my rough survey calling a function in `gomega.*` form.
+
     ```
     form     the number of summary
     gomega.  599
