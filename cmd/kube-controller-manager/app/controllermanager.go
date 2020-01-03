@@ -90,6 +90,8 @@ const (
 
 // NewControllerManagerCommand creates a *cobra.Command object with default parameters
 func NewControllerManagerCommand() *cobra.Command {
+	// 使用默认配置 kubeconfig 创建 KubeControllerManagerOptions 结构体
+	// 包含了 DeploymentController、ReplicationController 等多个 controller 的配置
 	s, err := options.NewKubeControllerManagerOptions()
 	if err != nil {
 		klog.Fatalf("unable to initialize command options: %v", err)
@@ -106,9 +108,12 @@ current state towards the desired state. Examples of controllers that ship with
 Kubernetes today are the replication controller, endpoints controller, namespace
 controller, and serviceaccounts controller.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			// 打印版本信息
 			verflag.PrintAndExitIfRequested()
+			// 配置所有的参数信息
 			utilflag.PrintFlags(cmd.Flags())
 
+			// 配置集群的 kubeconfig 等基础配置
 			c, err := s.Config(KnownControllers(), ControllersDisabledByDefault.List())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -344,6 +349,8 @@ type InitFunc func(ctx ControllerContext) (debuggingHandler http.Handler, enable
 
 // KnownControllers returns all known controllers's name
 func KnownControllers() []string {
+
+	// 将 NewControllerInitializers 方法中返回的 Map 的键生成一个 list
 	ret := sets.StringKeySet(NewControllerInitializers(IncludeCloudLoops))
 
 	// add "special" controllers that aren't initialized normally.  These controllers cannot be initialized
@@ -370,6 +377,8 @@ const (
 // NewControllerInitializers is a public map of named controller groups (you can start more than one in an init func)
 // paired to their InitFunc.  This allows for structured downstream composition and subdivision.
 func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc {
+	// 将 controller-manager 中的所有的 controller 注册过来，名字为 key ， 启动函数为 value 存储在 Map 中
+	// 该方法维护了 controller-manager 的元数据，是每个 controller-manager 的重要方法
 	controllers := map[string]InitFunc{}
 	controllers["endpoint"] = startEndpointController
 	controllers["endpointslice"] = startEndpointSliceController

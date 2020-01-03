@@ -34,6 +34,7 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
+	// 配置相关参数 使用的是 cobra
 	command := app.NewControllerManagerCommand()
 
 	// TODO: once we switch everything over to Cobra commands, we can go back to calling
