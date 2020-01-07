@@ -64,6 +64,7 @@ type CompletedConfig struct {
 func (c *Config) Complete() *CompletedConfig {
 	cc := completedConfig{c}
 
+	//
 	apiserver.AuthorizeClientBearerToken(c.LoopbackClientConfig, &c.Authentication, &c.Authorization)
 
 	return &CompletedConfig{&cc}
