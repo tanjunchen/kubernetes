@@ -114,6 +114,7 @@ controller, and serviceaccounts controller.`,
 			utilflag.PrintFlags(cmd.Flags())
 
 			// 配置集群的 kubeconfig 等基础配置
+			// 配置各种 controller 的启动
 			c, err := s.Config(KnownControllers(), ControllersDisabledByDefault.List())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -162,6 +163,8 @@ func ResyncPeriod(c *config.CompletedConfig) func() time.Duration {
 
 // Run runs the KubeControllerManagerOptions.  This should never exit.
 func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
+	// 主要过程包括一些 server 的配置 各种健康检查以及是否需要配置 Leader 的选举
+	// controller-manager 的选举同 scheduler 一致 最终依次启动所有的 start 开头的 controller 完成启动过程
 	// To help debugging, immediately log version
 	klog.Infof("Version: %+v", version.Get())
 
@@ -351,6 +354,7 @@ type InitFunc func(ctx ControllerContext) (debuggingHandler http.Handler, enable
 func KnownControllers() []string {
 
 	// 将 NewControllerInitializers 方法中返回的 Map 的键生成一个 list
+	// 配置各种 controller 的启动
 	ret := sets.StringKeySet(NewControllerInitializers(IncludeCloudLoops))
 
 	// add "special" controllers that aren't initialized normally.  These controllers cannot be initialized
@@ -377,8 +381,8 @@ const (
 // NewControllerInitializers is a public map of named controller groups (you can start more than one in an init func)
 // paired to their InitFunc.  This allows for structured downstream composition and subdivision.
 func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc {
-	// 将 controller-manager 中的所有的 controller 注册过来，名字为 key ， 启动函数为 value 存储在 Map 中
-	// 该方法维护了 controller-manager 的元数据，是每个 controller-manager 的重要方法
+	// 将 controller-manager 中的所有的 controller 注册过来,名字为 key,启动函数为 value 存储在 Map 中
+	// 该方法维护了 controller-manager 的元数据,是每个 controller-manager 的重要方法
 	controllers := map[string]InitFunc{}
 	controllers["endpoint"] = startEndpointController
 	controllers["endpointslice"] = startEndpointSliceController

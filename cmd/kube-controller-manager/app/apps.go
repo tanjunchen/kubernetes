@@ -80,9 +80,11 @@ func startReplicaSetController(ctx ControllerContext) (http.Handler, bool, error
 }
 
 func startDeploymentController(ctx ControllerContext) (http.Handler, bool, error) {
+	// 判断资源版本是否可用 即 deployment 应该为 apps/v1
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}] {
 		return nil, false, nil
 	}
+	// 通过 NewDeploymentController 创建一个 DeploymentController 对象
 	dc, err := deployment.NewDeploymentController(
 		ctx.InformerFactory.Apps().V1().Deployments(),
 		ctx.InformerFactory.Apps().V1().ReplicaSets(),
@@ -92,6 +94,7 @@ func startDeploymentController(ctx ControllerContext) (http.Handler, bool, error
 	if err != nil {
 		return nil, true, fmt.Errorf("error creating Deployment controller: %v", err)
 	}
+	// 启动 循环检测资源的变化 完成最终处理任务
 	go dc.Run(int(ctx.ComponentConfig.DeploymentController.ConcurrentDeploymentSyncs), ctx.Stop)
 	return nil, true, nil
 }

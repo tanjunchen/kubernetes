@@ -98,6 +98,7 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		return nil, err
 	}
 
+	// 包含各种 Controller 的初始化配置
 	s := KubeControllerManagerOptions{
 		Generic:         cmoptions.NewGenericControllerManagerConfigurationOptions(&componentConfig.Generic),
 		KubeCloudShared: cmoptions.NewKubeCloudSharedOptions(&componentConfig.KubeCloudShared),
