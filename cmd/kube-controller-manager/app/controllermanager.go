@@ -114,7 +114,11 @@ controller, and serviceaccounts controller.`,
 			utilflag.PrintFlags(cmd.Flags())
 
 			// 配置集群的 kubeconfig 等基础配置
+<<<<<<< HEAD
 			// 配置各种 controller 的启动
+=======
+			// 加载所有控制器,并将对应参数注入到控制器中
+>>>>>>> 41bcbe0035039a0bc2aa2d7faf79224a815bd9cc
 			c, err := s.Config(KnownControllers(), ControllersDisabledByDefault.List())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -162,6 +166,7 @@ func ResyncPeriod(c *config.CompletedConfig) func() time.Duration {
 }
 
 // Run runs the KubeControllerManagerOptions.  This should never exit.
+// 启动 controller-manager 的 http 服务和对应处理器 包括:NewBaseHandler BuildHandlerChain
 func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 	// 主要过程包括一些 server 的配置 各种健康检查以及是否需要配置 Leader 的选举
 	// controller-manager 的选举同 scheduler 一致 最终依次启动所有的 start 开头的 controller 完成启动过程
@@ -239,6 +244,7 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		}
 		saTokenControllerInitFunc := serviceAccountTokenControllerStarter{rootClientBuilder: rootClientBuilder}.startServiceAccountTokenController
 
+		// 启动控制器
 		if err := StartControllers(controllerContext, saTokenControllerInitFunc, NewControllerInitializers(controllerContext.LoopMode), unsecuredMux); err != nil {
 			klog.Fatalf("error starting controllers: %v", err)
 		}
@@ -250,6 +256,7 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		select {}
 	}
 
+	// 如果未启用选主(只是单节点)直接启动,并且 panic ,不在往下走,因为 run 内部有 select 挂起
 	if !c.ComponentConfig.Generic.LeaderElection.LeaderElect {
 		run(context.TODO())
 		panic("unreachable")
@@ -261,6 +268,7 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 	}
 
 	// add a uniquifier so that two processes on the same host don't accidentally both become active
+	// 生成唯一 id , 相等于进程锁
 	id = id + "_" + string(uuid.NewUUID())
 
 	rl, err := resourcelock.New(c.ComponentConfig.Generic.LeaderElection.ResourceLock,
@@ -276,6 +284,7 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		klog.Fatalf("error creating lock: %v", err)
 	}
 
+	// 进行选主,并在选为主节点后执行 run
 	leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
 		Lock:          rl,
 		LeaseDuration: c.ComponentConfig.Generic.LeaderElection.LeaseDuration.Duration,
@@ -354,7 +363,11 @@ type InitFunc func(ctx ControllerContext) (debuggingHandler http.Handler, enable
 func KnownControllers() []string {
 
 	// 将 NewControllerInitializers 方法中返回的 Map 的键生成一个 list
+<<<<<<< HEAD
 	// 配置各种 controller 的启动
+=======
+	// 初始化所有的控制器
+>>>>>>> 41bcbe0035039a0bc2aa2d7faf79224a815bd9cc
 	ret := sets.StringKeySet(NewControllerInitializers(IncludeCloudLoops))
 
 	// add "special" controllers that aren't initialized normally.  These controllers cannot be initialized
