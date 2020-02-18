@@ -82,6 +82,104 @@ import (
 	e2essh "k8s.io/kubernetes/test/e2e/framework/ssh"
 )
 
+/**
+
+E2E Utils库
+此库是定义在kubernetes/test/e2e/framework/util.go中的一系列常量、变量、函数：
+
+常量：各种操作的超时值、集群节点数量、CPU剖析采样间隔
+变量：各种常用镜像的URL，例如BusyBox
+函数：
+命名空间操控：
+CreateTestingNS：创建一个新的，供当前测试使用的命名空间
+DeleteNamespaces：删除命名空间
+CheckTestingNSDeletedExcept：检查所有e2e测试创建的命名空间出于Terminating状态，并且阻塞直到删除
+Cleanup：读取文件中的清单，从指定命名空间中删除它们，并检查命名空间中匹配指定selector的资源正确停止
+节点操控：
+设置Label、设置Taint
+RemoveLabelOffNode、RemoveTaintOffNode 删除Label/Taint
+AllNodesReady：检查所有节点是否就绪
+GetMasterHost：获取哦Master的主机名
+NodeHasTaint：判断节点是否具有Taint
+Pod操控：
+CreateEmptyFileOnPod：在Pod中创建文件
+LookForStringInPodExec：在Pod中执行命令并搜索输出
+LookForStringInLog：搜索Pod日志
+WaitForAllNodesSchedulabl：e等待节点可调度
+日志和调试：
+CoreDump：登陆所有节点并保存日志到指定目录
+DumpDebugInfo：输出测试的调试信息
+DumpNodeDebugInfo：输出节点的调试信息
+网络操控：
+BlockNetwork：通过操控Iptables阻塞两个节点之间的网络
+UnblockNetwork：解除阻塞
+控制平面操控：
+RestartApiserver：重启API Server
+RestartKubelet：重启Kubelet
+断言，若干Expect***、Fail***函数
+收集CPU、内存等剖析信息Gather***
+执行Kubectl命令：KubectlCmd
+创建K8S客户端：
+LoadConfig：加载K8S配置
+LoadClientset：创建客户端对象
+Ginkgo API封装：
+KubeDescribe
+等待各种资源达到某种状态：Wait***
+其它杂项：
+OpenWebSocketForURL：打开WebSocket连接
+PrettyPrintJSON：格式化JSON
+Run***：运行命令
+
+ */
+
+/**
+
+总结：
+可调试性
+如果测试失败，应当提供尽可能详细的错误信息：
+
+Go
+1
+2
+3
+4
+5
+// 没有错误信息
+Expect(err).NotTo(HaveOccurred())
+
+// 足够的错误信息
+Expect(err).NotTo(HaveOccurred(), "Failed to create %d foobars, only created %d", foobarsReqd, foobarsCreated)
+另一方面，不要打印过多冗长的日志，可能会干扰错误原因的定位。
+
+支持非专用集群
+在K8S项目的CI生命周期中，为了减少延迟、提高资源利用率，可能会复用已有的K8S集群，大规模并行的运行E2E测试。因此你：
+
+不能假设集群中仅仅运行你的测试用例。如果的确需要独占集群，使用 [Serial]标签
+ 应当避免在测试用例中对集群进行一些可能影响其它测试可靠运行的变更，例如重启节点、断开网络接口，升级集群软件。
+如果的确需要进行破坏性变更，使用 [Disruptive]标签，避免并行测试
+不要使用没有在API规范中明确声明的Kubernetes API
+减少执行时间
+在K8S项目的CI生命周期中，有数百个E2E用例需要执行，其中一部分还必须串行化的执行，这导致E2E测试非常耗时。
+
+建议尽所有可能保证你的用例可以在2m以内完成。
+
+容错能力
+E2E测试可能运行在不同的云提供商中、不同的负载状况下，底层存储有可能是最终一致性的。
+因此你的测试用例应该能够容忍偶然发生的，基础设施小故障或延迟：
+
+如果一个资源创建请求是异步的，那么即使在绝大部分情况下它实际上都是“同步”就完成了，也应当坚持假设它是异步的
+在高负载时，某些请求可能超时，在Fail测试用例之前，应该考虑Retry几次
+关于E2E Framework
+此框架能够自动创建名字独特的命名空间，在其中进行测试，并且最终清理一切（删除命名空间）。
+
+需要注意的是，删除命名空间是成本比较高的操作，你创建的资源越少，则清理工作越简单，测试运行的也就越快。
+
+关于E2E Utils库
+此库提供了大量可重用的测试相关代码，包括等待资源进入特定的状态、安全和一致性的重试失败操作。
+
+ */
+
+
 const (
 	// PodListTimeout is how long to wait for the pod to be listable.
 	PodListTimeout = time.Minute

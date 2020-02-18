@@ -18,6 +18,12 @@ package node
 
 import "k8s.io/kubernetes/test/e2e/framework"
 
+/**
+此外 任何测试都必须归属于某个 SIG 并具有对应的 [sig-<name>]标签。
+每个 e2e 的子包都在 framework.go 中 SIGDescribe 函数, 来添加此标签。
+测试可以具有多个标签，使用空格分隔即可。
+*/
+
 // SIGDescribe annotates the test with the SIG label.
 func SIGDescribe(text string, body func()) bool {
 	return framework.KubeDescribe("[sig-node] "+text, body)

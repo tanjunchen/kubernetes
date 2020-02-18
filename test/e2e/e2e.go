@@ -81,16 +81,22 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 // generated in this directory, and cluster logs will also be saved.
 // This function is called on each Ginkgo node in parallel mode.
 func RunE2ETests(t *testing.T) {
+	// 控制 HandleCrash 函数的行为，设置为 True 导致 panic
 	runtimeutils.ReallyCrash = true
+	// 初始化日志
 	logs.InitLogs()
+	// 刷空日志
 	defer logs.FlushLogs()
 
+	// 断言失败处理
 	gomega.RegisterFailHandler(e2elog.Fail)
 	// Disable skipped tests unless they are explicitly requested.
+	// 除非明确通过命令行参数要求，否则跳过测试
 	if config.GinkgoConfig.FocusString == "" && config.GinkgoConfig.SkipString == "" {
 		config.GinkgoConfig.SkipString = `\[Flaky\]|\[Feature:.+\]`
 	}
 
+	// 初始化 Reporter
 	// Run tests through the Ginkgo runner with output to console + JUnit for Jenkins
 	var r []ginkgo.Reporter
 	if framework.TestContext.ReportDir != "" {
@@ -103,9 +109,11 @@ func RunE2ETests(t *testing.T) {
 		}
 	}
 
+	// 测试进度信息输出到控制台，以及可选的外部 URL
 	// Stream the progress to stdout and optionally a URL accepting progress updates.
 	r = append(r, e2ereporters.NewProgressReporter(framework.TestContext.ProgressReportURL))
 
+	// 启动测试套件，使用 Ginkgo 默认 Reporter + 自定义的 Reporter
 	klog.Infof("Starting e2e run %q on Ginkgo node %d", framework.RunID, config.GinkgoConfig.ParallelNode)
 	ginkgo.RunSpecsWithDefaultAndCustomReporters(t, "Kubernetes e2e suite", r)
 }
@@ -207,11 +215,13 @@ func waitForDaemonSets(c clientset.Interface, ns string, allowedNotReadyNodes in
 func setupSuite() {
 	// Run only on Ginkgo node 1
 
+	// GCE/GKE 特殊处理
 	switch framework.TestContext.Provider {
 	case "gce", "gke":
 		framework.LogClusterImageSources()
 	}
 
+	// 创建 clientSet
 	c, err := framework.LoadClientset()
 	if err != nil {
 		klog.Fatal("Error loading client: ", err)
@@ -219,7 +229,9 @@ func setupSuite() {
 
 	// Delete any namespaces except those created by the system. This ensures no
 	// lingering resources are left over from a previous test run.
+	// 删除所有 K8S 自带的命名空间 清除上次测试残留的目录及文件
 	if framework.TestContext.CleanStart {
+		// E2E 框架提供大量便捷的 API
 		deleted, err := framework.DeleteNamespaces(c, nil, /* deleteFilter */
 			[]string{
 				metav1.NamespaceSystem,
@@ -231,6 +243,7 @@ func setupSuite() {
 			framework.Failf("Error deleting orphaned namespaces: %v", err)
 		}
 		klog.Infof("Waiting for deletion of the following namespaces: %v", deleted)
+		// 有很多类似的 等待操作完成的函数
 		if err := framework.WaitForNamespacesDeleted(c, deleted, framework.NamespaceCleanupTimeout); err != nil {
 			framework.Failf("Failed to delete orphaned namespaces %v: %v", deleted, err)
 		}
@@ -239,8 +252,11 @@ func setupSuite() {
 	// In large clusters we may get to this point but still have a bunch
 	// of nodes without Routes created. Since this would make a node
 	// unschedulable, we need to wait until all of them are schedulable.
+	// 对于大型集群，执行到这里时，可能很多节点的路由还没有同步，因此不支持调度
+	// 下面的方法等待直到所有节点可调度
 	framework.ExpectNoError(framework.WaitForAllNodesSchedulable(c, framework.TestContext.NodeSchedulableTimeout))
 
+	// 如果没有指定节点数量，自动计算
 	// If NumNodes is not specified then auto-detect how many are scheduleable and not tainted
 	if framework.TestContext.CloudConfig.NumNodes == framework.DefaultNumNodes {
 		nodes, err := e2enode.GetReadySchedulableNodes(c)
@@ -258,16 +274,21 @@ func setupSuite() {
 	// wasting the whole run), we allow for some not-ready pods (with the
 	// number equal to the number of allowed not-ready nodes).
 	if err := e2epod.WaitForPodsRunningReady(c, metav1.NamespaceSystem, int32(framework.TestContext.MinStartupPods), int32(framework.TestContext.AllowedNotReadyNodes), podStartupTimeout, map[string]string{}); err != nil {
+		// Dump出指定命名空间的事件、Pod、节点信息
 		framework.DumpAllNamespaceInfo(c, metav1.NamespaceSystem)
+		// 对失败的容器执行kubectl logs  Logf为Info级别日志器
 		framework.LogFailedContainers(c, metav1.NamespaceSystem, framework.Logf)
+		// 运行一个测试容器，尝试连接到 API Server，等待此容器 Ready，打印其标准输出，退出
 		runKubernetesServiceTestContainer(c, metav1.NamespaceDefault)
 		framework.Failf("Error waiting for all pods to be running and ready: %v", err)
 	}
 
+	// 等待 DaemonSets 全部就绪
 	if err := waitForDaemonSets(c, metav1.NamespaceSystem, int32(framework.TestContext.AllowedNotReadyNodes), framework.TestContext.SystemDaemonsetStartupTimeout); err != nil {
 		framework.Logf("WARNING: Waiting for all daemonsets to be ready failed: %v", err)
 	}
 
+	// 打印服务器和客户端版本信息
 	// Log the version of the server and this client.
 	framework.Logf("e2e test version: %s", version.Get().GitVersion)
 
@@ -282,6 +303,7 @@ func setupSuite() {
 	}
 
 	if framework.TestContext.NodeKiller.Enabled {
+		// NodeKiller 负责周期性的模拟节点失败
 		nodeKiller := framework.NewNodeKiller(framework.TestContext.NodeKiller, c, framework.TestContext.Provider)
 		go nodeKiller.Run(framework.TestContext.NodeKiller.NodeKillerStopCh)
 	}
@@ -306,3 +328,28 @@ func setupSuitePerGinkgoNode() {
 	framework.TestContext.IPFamily = getDefaultClusterIPFamily(c)
 	framework.Logf("Cluster IP family: %s", framework.TestContext.IPFamily)
 }
+
+// 参考网址 https://blog.gmem.cc/kubernetes-e2e-test
+/**
+隔离提供商相关测试
+1.12以及更老版本的E2E框架难以使用的原因是，它依赖于大量云提供商的私有SDK，这需要拉取大量的包，
+甚至编译通过都很困难。这些包里面，很多都仅仅被一部分测试所需要，
+因此从1.13开始和云提供商相关的测试，和K8S核心的测试被隔离开来，前者现在转移到 test/e2e/framework/providers包中，
+E2E框架通过接口ProviderInterface和这些云提供商相关测试。
+测试套件的实现者决定需要引入哪些提供商的包，并且配合kubetest的命令行选项 --provider激活之。
+1.13-1.14的二进制文件e2e.test支持1.12的所有providers，如果你不引用任何提供商的包，则仅仅通用providers可用，包括：
+
+skeleton，仅仅通过K8S API访问集群，没有其它方式
+local，类似local，但是支持通过脚本kubernetes/kubernetes/cluster中的脚本拉取日志
+外部文件
+很多测试套件需要在运行时读取额外的文件，例如YAML清单。 e2e.test二进制文件倾向于是自包含的，以提升可移植性。
+在之前，所有test/e2e/testing-manifests中的文件会被打包（使用go-bindata）到e2e.test中，
+现在则是可选的。当通过testfiles包访问文件时，e2e.test从不同地方获取文件：
+
+想对于 --repo-root参数所指定的目录
+从0-N个bindata块中获取
+从YAML创建资源
+在1.12中，你可以从YAML中加载一个个的资源，但是必须手工创建它。
+现在提供了新的方法从YAML中加载多个资源并Patch之（例如设置命名空间）、创建之。
+ */
+
