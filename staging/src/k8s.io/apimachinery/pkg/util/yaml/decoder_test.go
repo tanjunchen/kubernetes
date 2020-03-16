@@ -54,6 +54,30 @@ stuff: 1
 	}
 }
 
+func TestLongYAML(t *testing.T) {
+	dd, err := ioutil.ReadFile("./long_yaml.yaml")
+	if err != nil {
+		t.Fatalf("unexpected error : %v", err)
+	}
+
+	testCases := []struct {
+		bufLen    int
+		expectLen int
+		expectErr error
+	}{
+		{len(dd), len(dd), nil},
+	}
+
+	for _, testCase := range testCases {
+		r := NewDocumentDecoder(ioutil.NopCloser(bytes.NewReader(dd)))
+		b := make([]byte, testCase.bufLen)
+		n, _ := r.Read(b)
+		if n != testCase.expectLen {
+			t.Fatalf("expectLen = %v, but got len = %v", testCase.expectLen, n)
+		}
+	}
+}
+
 func TestYAMLDecoderCallsAfterErrShortBufferRestOfFrame(t *testing.T) {
 	d := `---
 stuff: 1
