@@ -6,8 +6,8 @@ go_library(
     importpath = "k8s.io/kubernetes/test/e2e/framework/log",
     visibility = ["//visibility:public"],
     deps = [
-        "//test/e2e/framework/ginkgowrapper:go_default_library",
         "//vendor/github.com/onsi/ginkgo:go_default_library",
+        "//vendor/k8s.io/kubernetes/test/e2e/framework/ginkgowrapper:go_default_library",
     ],
 )
 

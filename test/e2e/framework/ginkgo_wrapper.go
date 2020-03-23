@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package ginkgowrapper wraps Ginkgo Fail and Skip functions to panic
 // with structured data instead of a constant string.
-package ginkgowrapper
+package framework
 
 import (
 	"bufio"
@@ -40,10 +40,10 @@ type FailurePanic struct {
 // String makes FailurePanic look like the old Ginkgo panic when printed.
 func (FailurePanic) String() string { return ginkgo.GINKGO_PANIC }
 
-// Fail wraps ginkgo.Fail so that it panics with more useful
+// GinkgoWrapperFail wraps ginkgo.Fail so that it panics with more useful
 // information about the failure. This function will panic with a
 // FailurePanic.
-func Fail(message string, callerSkip ...int) {
+func GinkgoWrapperFail(message string, callerSkip ...int) {
 	skip := 1
 	if len(callerSkip) > 0 {
 		skip += callerSkip[0]
