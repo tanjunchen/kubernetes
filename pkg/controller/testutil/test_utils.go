@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	jsonpatch "github.com/evanphx/json-patch"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -40,12 +41,10 @@ import (
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	ref "k8s.io/client-go/tools/reference"
+	corev1helpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	utilnode "k8s.io/kubernetes/pkg/util/node"
-
-	jsonpatch "github.com/evanphx/json-patch"
 )
 
 var (
@@ -478,7 +477,7 @@ func GetZones(nodeHandler *FakeNodeHandler) []string {
 	nodes, _ := nodeHandler.List(context.TODO(), metav1.ListOptions{})
 	zones := sets.NewString()
 	for _, node := range nodes.Items {
-		zones.Insert(utilnode.GetZoneKey(&node))
+		zones.Insert(corev1helpers.GetZoneKey(&node))
 	}
 	return zones.List()
 }

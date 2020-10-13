@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
+	corev1helpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/kubernetes/pkg/features"
 )
 
@@ -338,7 +339,7 @@ func Test_GetZoneKey(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			zone := GetZoneKey(test.node)
+			zone := corev1helpers.GetZoneKey(test.node)
 			if zone != test.zone {
 				t.Logf("actual zone key: %q", zone)
 				t.Logf("expected zone key: %q", test.zone)

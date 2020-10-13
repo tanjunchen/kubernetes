@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	corev1helpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/klog/v2"
 
 	coordv1 "k8s.io/api/coordination/v1"
@@ -58,7 +59,6 @@ import (
 	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
-	utilnode "k8s.io/kubernetes/pkg/util/node"
 	taintutils "k8s.io/kubernetes/pkg/util/taints"
 )
 
@@ -701,7 +701,7 @@ func (nc *Controller) doNoExecuteTaintingPass() {
 			result := nodeutil.SwapNodeControllerTaint(nc.kubeClient, []*v1.Taint{&taintToAdd}, []*v1.Taint{&oppositeTaint}, node)
 			if result {
 				//count the evictionsNumber
-				zone := utilnode.GetZoneKey(node)
+				zone := corev1helpers.GetZoneKey(node)
 				evictionsNumber.WithLabelValues(zone).Inc()
 			}
 
@@ -744,7 +744,7 @@ func (nc *Controller) doEvictionPass() {
 			}
 
 			if node != nil {
-				zone := utilnode.GetZoneKey(node)
+				zone := corev1helpers.GetZoneKey(node)
 				evictionsNumber.WithLabelValues(zone).Inc()
 			}
 
@@ -813,7 +813,7 @@ func (nc *Controller) monitorNodeHealth() error {
 
 		// Some nodes may be excluded from disruption checking
 		if !isNodeExcludedFromDisruptionChecks(node) {
-			zoneToNodeConditions[utilnode.GetZoneKey(node)] = append(zoneToNodeConditions[utilnode.GetZoneKey(node)], currentReadyCondition)
+			zoneToNodeConditions[corev1helpers.GetZoneKey(node)] = append(zoneToNodeConditions[corev1helpers.GetZoneKey(node)], currentReadyCondition)
 		}
 
 		if currentReadyCondition != nil {
@@ -1370,7 +1370,7 @@ func (nc *Controller) classifyNodes(allNodes []*v1.Node) (added, deleted, newZon
 			added = append(added, allNodes[i])
 		} else {
 			// Currently, we only consider new zone as updated.
-			zone := utilnode.GetZoneKey(allNodes[i])
+			zone := corev1helpers.GetZoneKey(allNodes[i])
 			if _, found := nc.zoneStates[zone]; !found {
 				newZoneRepresentatives = append(newZoneRepresentatives, allNodes[i])
 			}
@@ -1413,7 +1413,7 @@ func (nc *Controller) ReducedQPSFunc(nodeNum int) float32 {
 func (nc *Controller) addPodEvictorForNewZone(node *v1.Node) {
 	nc.evictorLock.Lock()
 	defer nc.evictorLock.Unlock()
-	zone := utilnode.GetZoneKey(node)
+	zone := corev1helpers.GetZoneKey(node)
 	if _, found := nc.zoneStates[zone]; !found {
 		nc.zoneStates[zone] = stateInitial
 		if !nc.runTaintManager {
@@ -1434,7 +1434,7 @@ func (nc *Controller) addPodEvictorForNewZone(node *v1.Node) {
 // cancelPodEviction removes any queued evictions, typically because the node is available again. It
 // returns true if an eviction was queued.
 func (nc *Controller) cancelPodEviction(node *v1.Node) bool {
-	zone := utilnode.GetZoneKey(node)
+	zone := corev1helpers.GetZoneKey(node)
 	nc.evictorLock.Lock()
 	defer nc.evictorLock.Unlock()
 	if !nc.nodeEvictionMap.setStatus(node.Name, unmarked) {
@@ -1469,7 +1469,7 @@ func (nc *Controller) evictPods(node *v1.Node, pods []*v1.Pod) (bool, error) {
 	if !nc.nodeEvictionMap.setStatus(node.Name, toBeEvicted) {
 		klog.V(2).Infof("node %v was unregistered in the meantime - skipping setting status", node.Name)
 	}
-	return nc.zonePodEvictor[utilnode.GetZoneKey(node)].Add(node.Name, string(node.UID)), nil
+	return nc.zonePodEvictor[corev1helpers.GetZoneKey(node)].Add(node.Name, string(node.UID)), nil
 }
 
 func (nc *Controller) markNodeForTainting(node *v1.Node, status v1.ConditionStatus) bool {
@@ -1477,17 +1477,17 @@ func (nc *Controller) markNodeForTainting(node *v1.Node, status v1.ConditionStat
 	defer nc.evictorLock.Unlock()
 	if status == v1.ConditionFalse {
 		if !taintutils.TaintExists(node.Spec.Taints, NotReadyTaintTemplate) {
-			nc.zoneNoExecuteTainter[utilnode.GetZoneKey(node)].SetRemove(node.Name)
+			nc.zoneNoExecuteTainter[corev1helpers.GetZoneKey(node)].SetRemove(node.Name)
 		}
 	}
 
 	if status == v1.ConditionUnknown {
 		if !taintutils.TaintExists(node.Spec.Taints, UnreachableTaintTemplate) {
-			nc.zoneNoExecuteTainter[utilnode.GetZoneKey(node)].SetRemove(node.Name)
+			nc.zoneNoExecuteTainter[corev1helpers.GetZoneKey(node)].SetRemove(node.Name)
 		}
 	}
 
-	return nc.zoneNoExecuteTainter[utilnode.GetZoneKey(node)].Add(node.Name, string(node.UID))
+	return nc.zoneNoExecuteTainter[corev1helpers.GetZoneKey(node)].Add(node.Name, string(node.UID))
 }
 
 func (nc *Controller) markNodeAsReachable(node *v1.Node) (bool, error) {
@@ -1503,7 +1503,7 @@ func (nc *Controller) markNodeAsReachable(node *v1.Node) (bool, error) {
 		klog.Errorf("Failed to remove taint from node %v: %v", node.Name, err)
 		return false, err
 	}
-	return nc.zoneNoExecuteTainter[utilnode.GetZoneKey(node)].Remove(node.Name), nil
+	return nc.zoneNoExecuteTainter[corev1helpers.GetZoneKey(node)].Remove(node.Name), nil
 }
 
 // ComputeZoneState returns a slice of NodeReadyConditions for all Nodes in a given zone.

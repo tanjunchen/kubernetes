@@ -30,3 +30,38 @@ func PodPriority(pod *v1.Pod) int32 {
 	// name of the pod was empty. So, we resolve to the static default priority.
 	return 0
 }
+
+// GetZoneKey is a helper function that builds a string identifier that is unique per failure-zone;
+// it returns empty-string for no zone.
+// Since there are currently two separate zone keys:
+//   * "failure-domain.beta.kubernetes.io/zone"
+//   * "topology.kubernetes.io/zone"
+// GetZoneKey will first check failure-domain.beta.kubernetes.io/zone and if not exists, will then check
+// topology.kubernetes.io/zone
+func GetZoneKey(node *v1.Node) string {
+	labels := node.Labels
+	if labels == nil {
+		return ""
+	}
+
+	// TODO: prefer stable labels for zone in v1.18
+	zone, ok := labels[v1.LabelZoneFailureDomain]
+	if !ok {
+		zone, _ = labels[v1.LabelZoneFailureDomainStable]
+	}
+
+	// TODO: prefer stable labels for region in v1.18
+	region, ok := labels[v1.LabelZoneRegion]
+	if !ok {
+		region, _ = labels[v1.LabelZoneRegionStable]
+	}
+
+	if region == "" && zone == "" {
+		return ""
+	}
+
+	// We include the null character just in case region or failureDomain has a colon
+	// (We do assume there's no null characters in a region or failureDomain)
+	// As a nice side-benefit, the null character is not printed by fmt.Print or glog
+	return region + ":\x00:" + zone
+}
